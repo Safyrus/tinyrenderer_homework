@@ -7,8 +7,8 @@
 #include <math.h>
 #include <iostream>
 
-#define width 512
-#define height 512
+#define width 128
+#define height 128
 
 const TGAColor black = TGAColor(0, 0, 0, 255);
 const TGAColor magenta = TGAColor(170, 0, 170, 255);
@@ -171,13 +171,24 @@ void triangle_texture(Vec3f T[3], Vec2i uv[3], TGAImage &image, TGAImage &textur
 
 int main(int argc, char **argv)
 {
+    std::string modelFileName = "model.obj";
+    std::string modelTextureFileName = "model.tga";
+    if (argc > 1)
+    {
+        modelFileName = argv[1];
+    }
+    if (argc > 2)
+    {
+        modelTextureFileName = argv[2];
+    }
+
     // create empty image
     TGAImage image(width, height, TGAImage::RGB);
     square(Vec2i(0, 0), Vec2i(width, height), image, dark_blue);
 
     // load texture image
     TGAImage texture;
-    texture.read_tga_file("obj/african_head_diffuse.tga");
+    texture.read_tga_file(modelTextureFileName.c_str());
     texture.flip_vertically();
 
     // z buffer
@@ -187,13 +198,15 @@ int main(int argc, char **argv)
         zbuf[i] = -1 * __FLT_MAX__;
     }
 
-    // light direction
-    Vec3f dir(1, 0, -1);
     // camera distance
-    float c = 20000000;
+    float c = 10;
+    Vec3f camPos = Vec3f(-0.2, 0, 0);
+    Vec3f camRot = Vec3f(0*M_PI*2, 0.1*M_PI*2, 0*M_PI*2);
+    // light direction
+    Vec3f dir(-1, 0, 1);
 
     // load model
-    Model *model = new Model("obj/african_head.obj");
+    Model *model = new Model(modelFileName.c_str());
     // draw model
     for (int i = 0; i < model->nfaces(); i++)
     {
@@ -202,10 +215,24 @@ int main(int argc, char **argv)
         for (int j = 0; j < 3; j++)
         {
             vects[j] = model->vert(model->face(i)[j * 2]);
-            float tmp = 1 - (vects[j].z / c);
-            vects[j].x = vects[j].x / (tmp);
-            vects[j].y = vects[j].y / (tmp);
-            vects[j].z = vects[j].z / (tmp);
+            Vec3f newVec = vects[j];
+
+            newVec.y = newVec.y * cos(camRot.x) + newVec.z * -sin(camRot.x);
+            newVec.z = newVec.y * sin(camRot.x) + newVec.z * cos(camRot.x);
+
+            newVec.x = newVec.x * cos(camRot.y) + newVec.z * sin(camRot.y);
+            newVec.z = newVec.x * -sin(camRot.y) + newVec.z * cos(camRot.y);
+
+            newVec.x = newVec.x * cos(camRot.z) + newVec.y * -sin(camRot.z);
+            newVec.y = newVec.x * sin(camRot.z) + newVec.y * cos(camRot.z);
+
+            float tmp = 1 - (newVec.z / c);
+
+            newVec.x = (newVec.x + camPos.x) / tmp;
+            newVec.y = (newVec.y + camPos.y) / tmp;
+            newVec.z = (newVec.z + camPos.z) / tmp;
+
+            vects[j] = newVec;
         }
 
         // find angle between 2 3d vectors
@@ -232,12 +259,12 @@ int main(int argc, char **argv)
         float intensity = abs(angle);
         if (intensity > 0)
         {
-            TGAColor gradiant[9] = {black, dark_blue, blue, magenta, dark_red, red, orange, yellow, white};
-            // TGAColor gradiant[8] = {white, yellow, orange, red, magenta, blue, dark_blue, black};
-            // int colorIndex = intensity * 9;
+            // TGAColor gradiant[9] = {black, dark_blue, blue, magenta, dark_red, red, orange, yellow, white};
+            TGAColor gradiant[9] = {white, yellow, orange, red, dark_red, magenta, blue, dark_blue, black};
+            int colorIndex = intensity * 9;
             // triangle_fill(vects[0], vects[1], vects[2], image, TGAColor(255*intensity, 255*intensity, 255*intensity, 255), zbuf);
-            // triangle_fill(vects[0], vects[1], vects[2], image, gradiant[colorIndex], zbuf);
-            triangle_texture(vects, vt, image, texture, zbuf, intensity);
+            triangle_fill(vects[0], vects[1], vects[2], image, gradiant[colorIndex], zbuf);
+            // triangle_texture(vects, vt, image, texture, zbuf, intensity);
         }
     }
 
