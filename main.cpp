@@ -7,9 +7,6 @@
 #include <math.h>
 #include <iostream>
 
-#define width 128
-#define height 128
-
 const TGAColor black = TGAColor(0, 0, 0, 255);
 const TGAColor magenta = TGAColor(170, 0, 170, 255);
 const TGAColor pink = TGAColor(255, 85, 255, 255);
@@ -93,7 +90,7 @@ void triangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
     line(t2, t0, image, color);
 }
 
-void triangle_fill(Vec3f T1, Vec3f T2, Vec3f T3, TGAImage &image, TGAColor color, float *zbuf)
+void triangle_fill(Vec3f T1, Vec3f T2, Vec3f T3, TGAImage &image, TGAColor color, float *zbuf, int width, int height)
 {
     Vec2i A = Vec2i((T1.x + 1) * (width / 2), (T1.y + 1) * (height / 2));
     Vec2i B = Vec2i((T2.x + 1) * (width / 2), (T2.y + 1) * (height / 2));
@@ -126,7 +123,7 @@ void triangle_fill(Vec3f T1, Vec3f T2, Vec3f T3, TGAImage &image, TGAColor color
     }
 }
 
-void triangle_texture(Vec3f T[3], Vec2i uv[3], TGAImage &image, TGAImage &texture, float *zbuf, float intensity)
+void triangle_texture(Vec3f T[3], Vec2i uv[3], TGAImage &image, TGAImage &texture, float *zbuf, float intensity, int width, int height)
 {
     Vec2i A = Vec2i((T[0].x + 1) * (width / 2), (T[0].y + 1) * (height / 2));
     Vec2i B = Vec2i((T[1].x + 1) * (width / 2), (T[1].y + 1) * (height / 2));
@@ -171,15 +168,37 @@ void triangle_texture(Vec3f T[3], Vec2i uv[3], TGAImage &image, TGAImage &textur
 
 int main(int argc, char **argv)
 {
-    std::string modelFileName = "model.obj";
-    std::string modelTextureFileName = "model.tga";
+    std::string modelFileName = "obj/african_head.obj";
+    std::string modelTextureFileName = "obj/african_head_diffuse.tga";
+    int width = 128;
+    int height = 128;
+    int style = true;
+
     if (argc > 1)
     {
+        std::string help = "help";
+        if (help.compare(argv[1]) == 0)
+        {
+            std::cout << argv[0] << " [modelFileName] [modelTextureFileName] [width] [height] [style]";
+        }
         modelFileName = argv[1];
     }
     if (argc > 2)
     {
         modelTextureFileName = argv[2];
+    }
+    if (argc > 3)
+    {
+        width = std::stoi(argv[3]);
+    }
+    if (argc > 4)
+    {
+        height = std::stoi(argv[4]);
+    }
+    if (argc > 5)
+    {
+        std::string yes = "true";
+        style = (yes.compare(argv[5]) == 0);
     }
 
     // create empty image
@@ -201,7 +220,7 @@ int main(int argc, char **argv)
     // camera distance
     float c = 10;
     Vec3f camPos = Vec3f(-0.2, 0, 0);
-    Vec3f camRot = Vec3f(0*M_PI*2, 0.1*M_PI*2, 0*M_PI*2);
+    Vec3f camRot = Vec3f(0 * M_PI * 2, 0.1 * M_PI * 2, 0 * M_PI * 2);
     // light direction
     Vec3f dir(-1, 0, 1);
 
@@ -259,12 +278,18 @@ int main(int argc, char **argv)
         float intensity = abs(angle);
         if (intensity > 0)
         {
-            // TGAColor gradiant[9] = {black, dark_blue, blue, magenta, dark_red, red, orange, yellow, white};
-            TGAColor gradiant[9] = {white, yellow, orange, red, dark_red, magenta, blue, dark_blue, black};
-            int colorIndex = intensity * 9;
-            // triangle_fill(vects[0], vects[1], vects[2], image, TGAColor(255*intensity, 255*intensity, 255*intensity, 255), zbuf);
-            triangle_fill(vects[0], vects[1], vects[2], image, gradiant[colorIndex], zbuf);
-            // triangle_texture(vects, vt, image, texture, zbuf, intensity);
+            if (style)
+            {
+                // TGAColor gradiant[9] = {black, dark_blue, blue, magenta, dark_red, red, orange, yellow, white};
+                TGAColor gradiant[9] = {white, yellow, orange, red, dark_red, magenta, blue, dark_blue, black};
+                int colorIndex = intensity * 9;
+                triangle_fill(vects[0], vects[1], vects[2], image, gradiant[colorIndex], zbuf, width, height);
+                // triangle_fill(vects[0], vects[1], vects[2], image, TGAColor(255*intensity, 255*intensity, 255*intensity, 255), zbuf, width, height);
+            }
+            else
+            {
+                triangle_texture(vects, vt, image, texture, zbuf, intensity, width, height);
+            }
         }
     }
 
